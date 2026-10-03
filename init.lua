@@ -98,8 +98,15 @@ do
   vim.g.mapleader = ' '
   vim.g.maplocalleader = ' '
 
+  -- English UI and messages, regardless of the system locale (pl_PL).
+  -- LC_MESSAGES is inherited by language servers (e.g. Roslyn diagnostics);
+  -- dates and number formats stay Polish.
+  vim.env.LC_MESSAGES = 'en_US.UTF-8'
+  vim.env.DOTNET_CLI_UI_LANGUAGE = 'en'
+  vim.cmd.language { 'messages', 'en_US.UTF-8' }
+
   -- Set to true if you have a Nerd Font installed and selected in the terminal
-  vim.g.have_nerd_font = false
+  vim.g.have_nerd_font = true
 
   -- [[ Setting options ]]
   --  See `:help vim.o`
@@ -787,7 +794,12 @@ do
   }
 
   -- Automatically install LSPs and related tools to stdpath for Neovim
-  require('mason').setup {}
+  require('mason').setup {
+    registries = {
+      'github:mason-org/mason-registry',
+      'github:Crashdummyy/mason-registry',
+    },
+  }
 
   -- Translates between nvim-lspconfig server names and mason.nvim package names (e.g. lua_ls <-> lua-language-server)
   require('mason-lspconfig').setup {
@@ -898,6 +910,18 @@ do
       -- See `:help blink-cmp-config-keymap` for defining your own keymap
       preset = 'default',
 
+      -- <Tab> accepts the selected completion; without the menu it jumps
+      -- through snippet placeholders or inserts a normal tab.
+      ['<Tab>'] = { 'accept', 'snippet_forward', 'fallback' },
+
+      -- Same Ctrl-hjkl as in the command line, active only while the menu is open:
+      --   <C-j>/<C-k> next / previous, <C-l> accept, <C-h> close and restore the typed text.
+      -- With the menu closed they keep their usual meaning (<C-k> toggles signature help).
+      ['<C-j>'] = { 'select_next', 'fallback' },
+      ['<C-k>'] = { 'select_prev', 'show_signature', 'hide_signature', 'fallback' },
+      ['<C-l>'] = { 'accept', 'fallback' },
+      ['<C-h>'] = { 'cancel', 'fallback' },
+
       -- For more advanced Luasnip keymaps (e.g. selecting choice nodes, expansion) see:
       --    https://github.com/L3MON4D3/LuaSnip?tab=readme-ov-file#keymaps
     },
@@ -912,6 +936,18 @@ do
       -- By default, you may press `<c-space>` to show the documentation.
       -- Optionally, set `auto_show = true` to show the documentation after a delay.
       documentation = { auto_show = false, auto_show_delay_ms = 500 },
+
+      -- Kind icons need a Nerd Font; without one they render as boxes over the label.
+      -- In that case show the kind as text instead (and nothing in the command line).
+      menu = {
+        draw = {
+          columns = function(ctx)
+            if vim.g.have_nerd_font then return { { 'kind_icon' }, { 'label', 'label_description', gap = 1 } } end
+            if ctx.mode == 'cmdline' then return { { 'label' } } end
+            return { { 'label', 'label_description', gap = 1 }, { 'kind' } }
+          end,
+        },
+      },
     },
 
     sources = {
@@ -931,6 +967,53 @@ do
 
     -- Shows a signature help window while you type arguments for a function
     signature = { enabled = true },
+
+    -- Command-line completion (e.g. `:e <Tab>`):
+    --   <Tab>        open the list
+    --   <C-j>/<C-k>  next / previous item
+    --   <C-l>        enter the selected directory (or accept the selected file)
+    --   <C-h>        go up to the parent directory
+    -- While the list is closed, <C-h>/<C-j>/<C-k>/<C-l> keep their built-in meaning.
+    cmdline = {
+      keymap = {
+        preset = 'cmdline',
+        ['<Tab>'] = { 'show_and_insert', 'fallback' },
+        ['<S-Tab>'] = false,
+        ['<Right>'] = false,
+        ['<Left>'] = false,
+        ['<C-j>'] = { 'select_next', 'fallback' },
+        ['<C-k>'] = { 'select_prev', 'fallback' },
+        ['<C-l>'] = {
+          function(cmp)
+            if not (cmp.is_menu_visible() and cmp.get_selected_item()) then return end
+            return cmp.accept {
+              callback = function()
+                vim.schedule(function()
+                  if vim.fn.getcmdline():sub(-1) == '/' then cmp.show_and_insert() end
+                end)
+              end,
+            }
+          end,
+          'fallback',
+        },
+        ['<C-h>'] = {
+          function(cmp)
+            if not cmp.is_menu_visible() then return end
+            local line = vim.fn.getcmdline()
+            local head, arg = line:match '^(.*%s)(%S*)$'
+            if not head then return end
+            -- Drop the selected entry to get the listed directory, then step up from it
+            local dir = arg:gsub('[^/]*/?$', '')
+            local parent = (dir == '' or dir:sub(-3) == '../') and dir .. '../' or dir:gsub('[^/]*/$', '')
+            cmp.hide()
+            vim.fn.setcmdline(head .. parent)
+            vim.schedule(function() cmp.show_and_insert() end)
+            return true
+          end,
+          'fallback',
+        },
+      },
+    },
   }
 end
 
@@ -948,7 +1031,7 @@ do
   vim.pack.add { { src = gh 'nvim-treesitter/nvim-treesitter', version = 'main' } }
 
   -- Ensure basic parsers are installed
-  local parsers = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' }
+  local parsers = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'c_sharp', 'query', 'vim', 'vimdoc' }
   require('nvim-treesitter').install(parsers)
 
   ---@param buf integer
@@ -1023,7 +1106,7 @@ do
   -- NOTE: You can add your own plugins, configuration, etc. in `lua/custom/plugins/*.lua`.
   --
   -- For independent modules, uncomment the convenience loader:
-  -- require 'custom.plugins'
+  require 'custom.plugins'
   --
   -- `custom.plugins` automatically loads files from that directory, but their
   -- order is unspecified. If plugins depend on each other, keep them in the same
