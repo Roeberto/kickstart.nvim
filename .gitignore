@@ -11,3 +11,5 @@ spell/
 # merge conflicts.
 
 .DS_Store
+
+__pycache__/
