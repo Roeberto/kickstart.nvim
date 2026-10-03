@@ -137,6 +137,16 @@ do
   -- Enable undo/redo changes even after closing and reopening a file
   vim.o.undofile = true
 
+  -- Automatycznie wczytuj plik ponownie, gdy zmieni się na dysku (np. po edycji w innym programie)
+  vim.o.autoread = true
+  vim.api.nvim_create_autocmd({ 'FocusGained', 'BufEnter', 'CursorHold' }, {
+    desc = 'Sprawdź, czy plik zmienił się na dysku',
+    group = vim.api.nvim_create_augroup('auto-reload', { clear = true }),
+    callback = function()
+      if vim.fn.mode() ~= 'c' then vim.cmd 'checktime' end
+    end,
+  })
+
   -- Case-insensitive searching UNLESS \C or one or more capital letters in the search term
   vim.o.ignorecase = true
   vim.o.smartcase = true
@@ -479,6 +489,9 @@ do
   -- - sr)'  - [S]urround [R]eplace [)] [']
   require('mini.surround').setup()
 
+  -- Automatyczne zamykanie nawiasów, klamr i cudzysłowów
+  require('mini.pairs').setup()
+
   -- Simple and easy statusline.
   --  You could remove this setup call if you don't like it,
   --  and try some other statusline plugin
@@ -815,6 +828,7 @@ do
   local ensure_installed = vim.tbl_keys(servers or {})
   vim.list_extend(ensure_installed, {
     -- You can add other tools here that you want Mason to install
+    'roslyn',
   })
 
   require('mason-tool-installer').setup { ensure_installed = ensure_installed }
@@ -950,7 +964,7 @@ do
     },
 
     sources = {
-      default = { 'lsp', 'path', 'snippets' },
+      default = { 'lsp', 'path', 'snippets', 'buffer' },
     },
 
     snippets = { preset = 'luasnip' },
@@ -962,7 +976,17 @@ do
     -- the rust implementation via `'prefer_rust_with_warning'`
     --
     -- See `:help blink-cmp-config-fuzzy` for more information
-    fuzzy = { implementation = 'lua' },
+    fuzzy = {
+      implementation = 'lua',
+      sorts = {
+        -- Pozycje z `preselect` (np. oczekiwany typ w Roslyn) na górę
+        function(a, b)
+          if (a.preselect or false) ~= (b.preselect or false) then return a.preselect == true end
+        end,
+        'score',
+        'sort_text',
+      },
+    },
 
     -- Shows a signature help window while you type arguments for a function
     signature = { enabled = true },
