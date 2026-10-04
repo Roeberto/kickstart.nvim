@@ -31,6 +31,10 @@ def _save(boss: Boss) -> None:
 
 def _schedule(boss: Boss) -> None:
     global _pending
+    # Only the main instance (started without --session, e.g. not `kitty --session=none`
+    # from the file manager) owns the remembered session.
+    if getattr(boss.args, 'session', ''):
+        return
     if not _pending:
         _pending = True
         add_timer(lambda _timer_id: _save(boss), DELAY, False)
