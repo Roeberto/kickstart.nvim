@@ -65,6 +65,24 @@ kitty +runpy 'from kitty.config import load_config; import os
 print(load_config(os.path.expanduser("~/.config/kitty/kitty.conf")).background)'
 ```
 
+### 4a. Dolphin / menedżer plików: „Otwórz terminal tutaj” jako nowa karta (opcjonalnie)
+
+`kitty.conf` ma `startup_session` (zapamiętane karty), który ignoruje folder przekazany przez
+menedżer plików. `kitty/open-here.sh` to naprawia: jeśli kitty już działa, dodaje kartę w tym
+folderze (przez gniazdo z `listen_on`); jeśli nie działa, startuje z zapamiętanymi kartami i
+dokłada kartę w folderze. Aby KDE go używało, trzeba podmienić wpis `kitty.desktop`
+(plik leży poza repozytorium):
+
+```bash
+sed "s#^Exec=kitty\$#Exec=$HOME/.config/kitty/open-here.sh#" /usr/share/applications/kitty.desktop \
+    > ~/.local/share/applications/kitty.desktop
+kbuildsycoca6          # odśwież cache KDE
+```
+
+W `~/.config/kdeglobals` powinno być `TerminalApplication=kitty` i `TerminalService=kitty.desktop`.
+Po zmianie zrestartuj kitty (gniazdo powstaje przy starcie). KDE przekazuje folder tylko jako
+katalog roboczy procesu, nie jako argument; skrypt obsługuje oba przypadki.
+
 ## 5. Font Monaspace Neon NF
 
 `kitty.conf` ustawia `font_family Monaspace Neon NF`.
@@ -105,7 +123,6 @@ wróć do punktu 4.
 
 ## Czego repozytorium nie przenosi
 
-- `nvim-pack-lock.json` jest poza repozytorium (świadomie), więc wersje wtyczek mogą się
-  różnić między maszynami. Żeby je zrównać: `git add nvim-pack-lock.json` na jednej maszynie.
+- `kitty.desktop` w `~/.local/share/applications` (punkt 4a) i `~/.config/kdeglobals`.
 - Sesje auto-session i historia undo (`~/.local/state/nvim`) są lokalne dla maszyny.
 - Klucze SSH i ustawienia `~/.ssh`.
