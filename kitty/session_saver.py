@@ -18,6 +18,7 @@ from typing import Any
 from kitty.boss import Boss
 from kitty.config import atomic_save
 from kitty.fast_data_types import add_timer, get_os_window_size, glfw_get_monitor_workarea
+from kitty.session import parse_save_as_options_spec_args
 from kitty.window import Window
 
 SESSION_PATH = os.path.expanduser('~/.local/state/kitty/last-session.kitty-session')
@@ -25,6 +26,12 @@ SIZE_PATH = os.path.expanduser(os.environ.get('KITTY_WINDOW_SIZE_FILE', '~/.loca
 DELAY = 2.0
 SIZE_DELAY = 1.0  # lets a drag-resize settle before reading the size
 MAXIMIZED_RATIO = 0.9  # a window covering >= 90% of a monitor in both axes is treated as maximized (the panel eats ~5% of the height)
+
+# `kitty +open <file/URL>` (kitty-open.desktop) creates a placeholder window running
+# `kitty +runpy input()` instead of a shell. Saving it would make every later start restore
+# a window where nothing can be typed, so it is left out of the session.
+# (Dots instead of `\(\)`: parentheses are grouping in kitty's match syntax.)
+SAVE_OPTS = parse_save_as_options_spec_args(['--match=not cmdline:^input..$'])[0]
 
 _pending = False
 _size_pending: set[int] = set()
@@ -35,7 +42,7 @@ _sized: set[int] = set()  # OS windows that already got the saved size applied
 def _save(boss: Boss) -> None:
     global _pending
     _pending = False
-    session = '\n'.join(boss.serialize_state_as_session(SESSION_PATH))
+    session = '\n'.join(boss.serialize_state_as_session(SESSION_PATH, SAVE_OPTS))
     if 'launch' not in session:
         return
     os.makedirs(os.path.dirname(SESSION_PATH), exist_ok=True)
