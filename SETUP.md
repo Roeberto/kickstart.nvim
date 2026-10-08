@@ -83,6 +83,19 @@ W `~/.config/kdeglobals` powinno być `TerminalApplication=kitty` i `TerminalSer
 Po zmianie zrestartuj kitty (gniazdo powstaje przy starcie). KDE przekazuje folder tylko jako
 katalog roboczy procesu, nie jako argument; skrypt obsługuje oba przypadki.
 
+### 4b. Nautilus (GNOME): „Otwórz w terminalu (kitty)” (opcjonalnie)
+
+Wbudowane „Otwórz w konsoli” w Nautilusie zawsze uruchamia Ptyxis. Rozszerzenie
+`kitty/nautilus/open_in_kitty.py` dodaje do menu folderu pozycję, która woła `open-here.sh`
+(folder jako nowa karta w działającym kitty):
+
+```bash
+sudo dnf install nautilus-python
+mkdir -p ~/.local/share/nautilus-python/extensions
+ln -s ~/.config/nvim/kitty/nautilus/open_in_kitty.py ~/.local/share/nautilus-python/extensions/
+nautilus -q            # Nautilus wczyta rozszerzenie przy następnym otwarciu
+```
+
 ## 5. Font Monaspace Neon NF
 
 `kitty.conf` ustawia `font_family Monaspace Neon NF`.

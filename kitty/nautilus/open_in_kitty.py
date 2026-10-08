@@ -2,18 +2,21 @@
 # Needs the nautilus-python package; installed by symlinking this file into
 # ~/.local/share/nautilus-python/extensions/.
 
+import os
 import subprocess
 
 from gi.repository import GObject, Nautilus
 
 LABEL = 'Otwórz w terminalu (kitty)'
+# Opens the folder as a new tab in a running kitty, or starts kitty with the remembered
+# tabs plus one for the folder (see the script).
+OPEN_HERE = os.path.expanduser('~/.config/kitty/open-here.sh')
 
 
 def _open(_item, file):
     path = file.get_location().get_path()
     if path:
-        # --session=none: a fresh window in this folder, without the remembered tabs
-        subprocess.Popen(['kitty', '--session=none', '--directory', path], start_new_session=True)
+        subprocess.Popen([OPEN_HERE, '--directory', path], cwd=path, start_new_session=True)
 
 
 class OpenInKitty(GObject.GObject, Nautilus.MenuProvider):
